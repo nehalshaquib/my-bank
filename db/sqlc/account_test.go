@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -42,8 +42,7 @@ func TestDeleteAccount(t *testing.T) {
 
 	account2, err := testQueries.GetAccount(context.Background(), account1.ID)
 	require.Error(t, err)
-	var ErrNotFound = errors.New("sql: no rows in result set")
-	require.EqualError(t, err, ErrNotFound.Error())
+	require.EqualError(t, err, sql.ErrNoRows.Error())
 	require.Empty(t, account2)
 }
 
@@ -53,6 +52,7 @@ func TestGetAccount(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, account2)
 
+	require.Equal(t, account1.ID, account2.ID)
 	require.Equal(t, account1.Owner, account2.Owner)
 	require.Equal(t, account1.Balance, account2.Balance)
 	require.Equal(t, account1.Currency, account2.Currency)
@@ -69,6 +69,7 @@ func TestUpdateAccount(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, account2)
 
+	require.Equal(t, updateArg.ID, account2.ID)
 	require.Equal(t, account1.Owner, account2.Owner)
 	require.Equal(t, updateArg.Balance, account2.Balance)
 	require.Equal(t, account1.Currency, account2.Currency)
@@ -83,10 +84,12 @@ func TestListAccounts(t *testing.T) {
 		Limit:  5,
 		Offset: 5,
 	}
+
 	accounts, err := testQueries.ListAccounts(context.Background(), arg)
 	fmt.Println(accounts)
 	require.NoError(t, err)
 	require.Len(t, accounts, 5)
+
 	for _, account := range accounts {
 		require.NotEmpty(t, account)
 	}
