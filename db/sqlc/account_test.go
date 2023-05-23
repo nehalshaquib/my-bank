@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/nehalshaquib/my-bank/util"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateAccount(t *testing.T) {
+func createRandomAccount(t *testing.T) Account {
 	arg := CreateAccountParams{
-		Owner:    "John",
-		Balance:  100,
-		Currency: "USD",
+		Owner:    util.RandomOwner(),
+		Balance:  util.RandomMoney(),
+		Currency: util.RandomCurrency(),
 	}
 
 	account, err := testQueries.CreateAccount(context.Background(), arg)
@@ -26,6 +27,12 @@ func TestCreateAccount(t *testing.T) {
 
 	require.NotZero(t, account.ID)
 	require.NotZero(t, account.CreatedAt)
+
+	return account
+}
+
+func TestCreateAccount(t *testing.T) {
+	createRandomAccount(t)
 }
 
 func TestDeleteAccount(t *testing.T) {
@@ -83,17 +90,4 @@ func TestListAccounts(t *testing.T) {
 	for _, account := range accounts {
 		require.NotEmpty(t, account)
 	}
-}
-
-func createRandomAccount(t *testing.T) Account {
-	account := CreateAccountParams{
-		Owner:    "John",
-		Balance:  100,
-		Currency: "USD",
-	}
-	acc, err := testQueries.CreateAccount(context.Background(), account)
-	require.NoError(t, err)
-	require.NotEmpty(t, acc)
-
-	return acc
 }
