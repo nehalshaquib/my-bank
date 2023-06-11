@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -58,6 +59,15 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParam) (Transf
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
 
+		fromAccount, err := q.GetAccount(ctx, arg.FromAccountID)
+		if err != nil {
+			return err
+		}
+
+		if fromAccount.Balance < arg.Amount {
+			return errors.New("insufficient balance")
+		}
+
 		result.Transfer, err = q.CreateTransfer(ctx, CreateTransferParams(arg))
 		if err != nil {
 			return err
@@ -79,7 +89,22 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParam) (Transf
 			return err
 		}
 
-		//TODO: update account's balance
+		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.FromAccountID,
+			Amount: -arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
+		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.ToAccountID,
+			Amount: arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 

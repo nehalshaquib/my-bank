@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,6 +15,8 @@ func TestTransferTx(t *testing.T) {
 	store := NewStore(testDB)
 	errs := make(chan error)
 	results := make(chan TransferTxResult)
+	existed := make(map[int]bool)
+	fmt.Println(">>before transactions: fromAccount balance: ", fromAccount.Balance, " toAccount balance: ", toAccount.Balance)
 
 	// 5 concurrent transactions
 	n := 5
@@ -62,13 +65,37 @@ func TestTransferTx(t *testing.T) {
 		require.NotZero(t, result.ToEntry.CreatedAt)
 
 		//check from account
-		// require.NotEmpty(t, result.ToAccount)
-		// require.Equal(t, fromAccount.Balance, result.FromAccount.Balance-10*5)
+		require.NotEmpty(t, result.FromAccount)
+		require.Equal(t, fromAccount.ID, result.FromAccount.ID)
 
+		// check to account
+		require.NotEmpty(t, result.ToAccount)
+		require.Equal(t, toAccount.ID, result.ToAccount.ID)
+
+		//check accounts balance
+		fmt.Println(">>tx: fromAccount balance: ", result.FromAccount.Balance, " toAccount balance: ", result.ToAccount.Balance)
+		diff1 := fromAccount.Balance - result.FromAccount.Balance
+		diff2 := result.ToAccount.Balance - toAccount.Balance
+		fmt.Printf("diff1: %v diff2: %v\n", diff1, diff2)
+		require.Equal(t, diff1, diff2)
+		require.True(t, diff1 > 0)
+		require.True(t, diff1%amount == 0) //amount, 2* amount, 3*amount .......n*amount
+
+		k := int(diff1 / amount)
+		require.True(t, k >= 1 && k <= n)
+		require.NotContains(t, existed, k)
+		existed[k] = true
 	}
 
-	// require.Equal(t, acc1.ID, result.FromAccount.ID)
-	// require.Equal(t, acc2.ID, result.ToAccount.ID)
-	// require.Equal(t, acc1.Balance, result.FromAccount.Balance-arg.Amount)
-	// require.Equal(t, acc2.Balance, result.ToAccount.Balance+arg.Amount)
+	//check the final balances
+	updatedFromAccount, err := testQueries.GetAccount(context.Background(), fromAccount.ID)
+	require.NoError(t, err)
+
+	updatedToAccount, err := testQueries.GetAccount(context.Background(), toAccount.ID)
+	require.NoError(t, err)
+
+	fmt.Println(">>after all transactions: fromAccount balance: ", updatedFromAccount.Balance, " toAccount balance: ", updatedToAccount.Balance)
+	require.Equal(t, updatedFromAccount.Balance, fromAccount.Balance-int64(n)*amount)
+	require.Equal(t, updatedToAccount.Balance, toAccount.Balance+int64(n)*amount)
+
 }
