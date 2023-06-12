@@ -13,6 +13,18 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: myBank
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
     - name: Checkout out code into the GO module directory
       uses: actions/checkout@v3
@@ -22,6 +34,9 @@ jobs:
       with:
         go-version: ^1.19
       id: go
+
+    - name: Run migrations
+      uses: make migrateup
 
     - name: Test
       run: make test
